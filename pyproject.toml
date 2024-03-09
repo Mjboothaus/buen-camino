@@ -20,3 +20,6 @@ dev = [
     "notebook>=7.0.6",
     "black[jupyter]>=23.11.0",
 ]
+marimo = [
+    "marimo>=0.3.1",
+]
