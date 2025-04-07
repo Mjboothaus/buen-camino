@@ -1,0 +1,7 @@
+[paths]
+zip_filepath = "/Users/mjboothaus/icloud/Data/apple_health_export/export_2024_12_08.zip"
+sqlite_filepath = "data/healthkit-sqlite.db"
+duckdb_filepath = "data/healthkit-transformed.duckdb"
+
+[parameters]
+tables_to_keep = ["workouts", "workout_points"]

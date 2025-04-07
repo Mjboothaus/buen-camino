@@ -1,0 +1,17 @@
+[paths]
+database = "data/healthkit-duckdb.db"
+sql = "sql"
+cache = "cache"
+
+[parameters]
+min_duration = 20
+
+[map_defaults]
+origin = [-42.8821, 147.3272]
+zoom = 13
+tiles = "openstreetmap"
+line_color = "blue"
+line_width = 3
+
+[caching]
+backend = "memory"

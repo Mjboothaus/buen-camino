@@ -2,6 +2,8 @@
 
 .vscode/
 data/
+.DS_Store
+*.duckdb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
