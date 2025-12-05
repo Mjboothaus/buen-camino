@@ -1,9 +1,12 @@
 import argparse
 import subprocess
 import sys
+import time
+import sqlite3
+import pandas as pd
 from pathlib import Path
 from loguru import logger
-import tomllib  # For parsing TOML files
+import tomllib
 import duckdb
 from typing import List, Dict
 
@@ -62,39 +65,67 @@ class HealthKitConverter:
         subprocess.run(command, shell=True)
 
     def convert_sqlite_to_duckdb(self):
-        """Convert SQLite database to DuckDB with transformations."""
+        """Convert SQLite database to DuckDB with transformations using DuckDB for CSV export."""
         logger.info("Starting conversion from SQLite to DuckDB...")
 
         con = duckdb.connect(str(self.duckdb_filepath))
         con.execute("INSTALL sqlite;")
         con.execute("LOAD sqlite;")
-        con.execute(f"ATTACH '{self.sqlite_filepath}' (TYPE sqlite);")
 
-        tables = [row[0] for row in con.execute("SHOW TABLES;").fetchall()]
-        logger.info(f"Tables in SQLite database: {tables}")
+        sqlite_con = sqlite3.connect(self.sqlite_filepath)
 
-        tables_to_drop = set(tables) - set(self.tables_to_keep)
+        try:
+            # Export tables to CSV
+            for table in self.tables_to_keep:
+                start_time = time.time()
+                csv_file = f"{table}.csv"
+                logger.info(f"Exporting table '{table}' to '{csv_file}'...")
 
-        for table in self.tables_to_keep:
-            if table == "workouts":
-                logger.info(f"Transforming table '{table}'...")
-                sql = f"""
-                CREATE TABLE workouts AS 
-                SELECT *, uuid() AS workout_uuid 
-                FROM {table};
-                """
-                con.execute(sql)
-            elif table == "workout_points":
-                logger.info(f"Copying table '{table}'...")
-                con.execute(f"CREATE TABLE {table} AS SELECT * FROM {table};")
-            else:
-                logger.warning(f"Skipping unknown table '{table}'...")
+                # Read table from SQLite into a Pandas DataFrame
+                query = f'SELECT * FROM "{table}"'
+                df = pd.read_sql_query(query, sqlite_con)
 
-        for table in tables_to_drop:
-            logger.info(f"Dropping table '{table}'...")
-            con.execute(f"DROP TABLE IF EXISTS {table};")
+                # Save DataFrame to CSV
+                df.to_csv(csv_file, index=False)
 
-        logger.info("Conversion completed successfully!")
+                export_time = time.time() - start_time
+                logger.info(
+                    f"Exported table '{table}' to CSV in {export_time:.2f} seconds."
+                )
+
+                # Import CSV into DuckDB
+                import_start_time = time.time()
+                logger.info(
+                    f"Importing table '{table}' from '{csv_file}' into DuckDB..."
+                )
+
+                if table == "workouts":
+                    con.execute(f"""
+                        CREATE OR REPLACE TABLE workouts AS
+                        SELECT *, uuid() AS workout_uuid
+                        FROM read_csv_auto('{csv_file}')
+                    """)
+                else:
+                    con.execute(
+                        f"CREATE OR REPLACE TABLE \"{table}\" AS SELECT * FROM read_csv_auto('{csv_file}')"
+                    )
+                import_time = time.time() - import_start_time
+                logger.info(
+                    f"Imported table '{table}' from CSV into DuckDB in {import_time:.2f} seconds."
+                )
+
+            # Drop tables that are not in tables_to_keep
+            con.execute(f"ATTACH '{self.sqlite_filepath}' AS tmp_sqlite (TYPE sqlite);")
+            con.execute("USE tmp_sqlite;")
+            tables = [row[0] for row in con.execute("SHOW TABLES;").fetchall()]
+            tables_to_drop = set(tables) - set(self.tables_to_keep)
+            for table in tables_to_drop:
+                logger.info(f"Dropping table '{table}'...")
+                con.execute(f'DROP TABLE IF EXISTS "{table}";')
+
+        finally:
+            sqlite_con.close()  # Close SQLite connection
+            logger.info("Conversion completed successfully!")
 
     def run(self, force: bool = False):
         """Run the full conversion pipeline."""
@@ -108,19 +139,13 @@ def parse_args() -> Dict:
         description="Convert HealthKit export zip to DuckDB database."
     )
     parser.add_argument(
-        "--zip",
-        type=Path,
-        help="The filepath to the HealthKit export zip.",
+        "--zip", type=Path, help="The filepath to the HealthKit export zip."
     )
     parser.add_argument(
-        "--sqlite",
-        type=Path,
-        help="The filepath for the intermediate SQLite database.",
+        "--sqlite", type=Path, help="The filepath for the intermediate SQLite database."
     )
     parser.add_argument(
-        "--duckdb",
-        type=Path,
-        help="The filepath for the output DuckDB database.",
+        "--duckdb", type=Path, help="The filepath for the output DuckDB database."
     )
     parser.add_argument(
         "--tables-to-keep",

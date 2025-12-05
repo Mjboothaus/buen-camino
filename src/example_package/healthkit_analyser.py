@@ -12,7 +12,7 @@ from loguru import logger
 # ### Configuration Management
 @dataclass
 class HealthKitConfig:
-    db_path: Path = Path("data/healthkit-transformed.duckdb")
+    db_path: Path = Path("data/healthkit-transformed_2024_12_08.duckdb")
     sql_dir: Path = Path("sql")
     cache_dir: Path = Path("cache")
     min_duration: int = 20

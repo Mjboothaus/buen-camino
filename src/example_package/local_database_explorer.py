@@ -29,12 +29,12 @@ class LocalDatabaseExplorer:
 
             # Optionally, show contents of each table (first 5 rows)
             for table in tables:
-                logger.info(f"Contents of table '{table[0]}':")
-                cursor.execute(f"SELECT * FROM {table[0]} LIMIT 5;")
+                table_name = table[0]
+                logger.info(f"Contents of table '{table_name}':")
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 5;")
                 rows = cursor.fetchall()
                 for row in rows:
                     logger.debug(row)
-
             conn.close()
         except sqlite3.OperationalError as e:
             logger.error(f"SQLite OperationalError: {e}")
@@ -49,22 +49,17 @@ class LocalDatabaseExplorer:
             logger.info(
                 f"Exploring SQLite database using DuckDB: {self.sqlite_filepath}"
             )
-
             # Connect to DuckDB and load the SQLite extension
             con = duckdb.connect()
             con.execute("INSTALL sqlite;")
             con.execute("LOAD sqlite;")
-
             # Attach the SQLite database with an alias
             con.execute(f"ATTACH '{self.sqlite_filepath}' AS tmp_sqlite (TYPE sqlite);")
-
             # Switch context to the attached SQLite database
             con.execute("USE tmp_sqlite;")
-
             # List all tables in the SQLite database
             tables = con.execute("SHOW TABLES;").fetchall()
             logger.info(f"SQLite Tables: {[table[0] for table in tables]}")
-
             # Show contents of each table (first 5 rows)
             for table in tables:
                 table_name = table[0]
@@ -73,11 +68,11 @@ class LocalDatabaseExplorer:
                 if rows:
                     for row in rows:
                         logger.debug(row)
+                        logger.info(f"Row: {row}")
                 else:
                     logger.warning(
                         f"Table '{table_name}' is empty or has no visible rows."
                     )
-
         except duckdb.IOException as e:
             logger.error(
                 f"DuckDB IOException: The file might be locked or already open. Error: {e}"
@@ -94,19 +89,17 @@ class LocalDatabaseExplorer:
         try:
             logger.info(f"Exploring DuckDB database: {self.duckdb_filepath}")
             con = duckdb.connect(str(self.duckdb_filepath))
-
             # List all tables in the DuckDB database
             tables = con.execute("SHOW TABLES;").fetchall()
             logger.info(f"DuckDB Tables: {[table[0] for table in tables]}")
-
             # Optionally, show contents of each table (first 5 rows)
             for table in tables:
-                logger.info(f"Contents of table '{table[0]}':")
-                rows = con.execute(f"SELECT * FROM {table[0]} LIMIT 5;").fetchall()
+                table_name = table[0]
+                logger.info(f"Contents of table '{table_name}':")
+                rows = con.execute(f"SELECT * FROM {table_name} LIMIT 5;").fetchall()
                 for row in rows:
                     logger.debug(row)
-
-            con.close()
+                con.close()
         except duckdb.IOException as e:
             logger.error(
                 f"DuckDB IOException: The file might be locked or already open. Error: {e}"
@@ -119,31 +112,31 @@ class LocalDatabaseExplorer:
         if self.sqlite_filepath:
             # self.explore_sqlite()
             self.explore_sqlite_with_duckdb()
-
         if self.duckdb_filepath:
             self.explore_duckdb()
 
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Explore local SQLite and DuckDB databases."
-    )
-    parser.add_argument("--sqlite", type=Path, help="Path to the SQLite database file.")
-    parser.add_argument("--duckdb", type=Path, help="Path to the DuckDB database file.")
-    args = parser.parse_args()
-
-    # Configure Loguru for logging
-    logger.remove()
-    logger.add(sys.stdout, level="INFO", colorize=True)
-    logger.add(
-        "database_explorer.log", rotation="1 MB", retention="1 week", level="DEBUG"
-    )
-
-    explorer = LocalDatabaseExplorer(
-        sqlite_filepath=args.sqlite, duckdb_filepath=args.duckdb
-    )
-    explorer.debug_databases()
+    def main():
+        parser = argparse.ArgumentParser(
+            description="Explore local SQLite and DuckDB databases."
+        )
+        parser.add_argument(
+            "--sqlite", type=Path, help="Path to the SQLite database file."
+        )
+        parser.add_argument(
+            "--duckdb", type=Path, help="Path to the DuckDB database file."
+        )
+        args = parser.parse_args()
+        # Configure Loguru for logging
+        logger.remove()
+        logger.add(sys.stdout, level="INFO", colorize=True)
+        logger.add(
+            "database_explorer.log", rotation="1 MB", retention="1 week", level="DEBUG"
+        )
+        explorer = LocalDatabaseExplorer(
+            sqlite_filepath=args.sqlite, duckdb_filepath=args.duckdb
+        )
+        explorer.debug_databases()
 
 
 if __name__ == "__main__":
-    main()
+    LocalDatabaseExplorer.main()

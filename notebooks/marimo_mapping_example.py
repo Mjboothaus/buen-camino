@@ -1,7 +1,19 @@
 import marimo
 
-__generated_with = "0.3.1"
-app = marimo.App()
+__generated_with = "0.3.4"
+app = marimo.App(width="medium")
+
+
+@app.cell
+def __():
+    import marimo as mo
+    return mo,
+
+
+@app.cell
+def __(mo):
+    mo.md("Here is some markdown text")
+    return
 
 
 @app.cell
@@ -12,7 +24,6 @@ def _():
     import pprint
     import json
     from functools import cache
-
     return cache, duckdb, folium, json, pd, pprint
 
 
@@ -24,8 +35,7 @@ def connect_to_health_db(duckdb):
         con.install_extension("sqlite")
         con.load_extension("sqlite")
         return con
-
-    return (get_db_connection,)
+    return get_db_connection,
 
 
 @app.cell
@@ -33,8 +43,7 @@ def __():
     def display_db_tables(con):
         if con:
             print(con.sql("SHOW ALL TABLES;"))
-
-    return (display_db_tables,)
+    return display_db_tables,
 
 
 @app.cell
@@ -42,8 +51,7 @@ def __():
     def generate_sql_query(table, conditions, select="*"):
         condition_str = " AND ".join([f"{k} {v}" for k, v in conditions.items()])
         return f"SELECT {select} FROM {table} WHERE {condition_str}"
-
-    return (generate_sql_query,)
+    return generate_sql_query,
 
 
 @app.cell
@@ -54,8 +62,7 @@ def __():
             df.drop(columns=cols_to_drop, inplace=True)
         # Add more cleaning
         return df
-
-    return (clean_dataframe,)
+    return clean_dataframe,
 
 
 @app.cell
@@ -66,7 +73,7 @@ def __():
         "startDate <= ": "'2023-10-17'",
         "duration > ": 100,
     }
-    return (conditions,)
+    return conditions,
 
 
 @app.cell
@@ -76,8 +83,7 @@ def __(clean_dataframe, generate_sql_query):
         # print(f"{sql}\n")
         df = con.sql(sql).to_df()
         return clean_dataframe(df, columns_to_keep=["id", "startDate", "duration", "distance"])
-
-    return (fetch_workouts,)
+    return fetch_workouts,
 
 
 @app.cell
@@ -88,8 +94,7 @@ def __(cache):
         # print(sql)
         df = con.sql(sql).to_df()
         return df
-
-    return (fetch_workout_points,)
+    return fetch_workout_points,
 
 
 @app.cell
@@ -99,8 +104,7 @@ def __():
         folium.PolyLine(points, color="blue", weight=3.5, opacity=1).add_to(m)
         folium.Marker([df["latitude"].iloc[0], df["longitude"].iloc[0]], popup="Start").add_to(m)
         return m
-
-    return (update_map,)
+    return update_map,
 
 
 @app.cell
@@ -110,8 +114,7 @@ def __(fetch_workout_points, update_map):
             df = fetch_workout_points(con, workout_id)
             m = update_map(folium, m, df)
         return m
-
-    return (plot_walks,)
+    return plot_walks,
 
 
 @app.cell
@@ -124,14 +127,13 @@ def __(fetch_workouts, folium, get_db_connection, plot_walks):
         bounds = [[x * SCALAR, y * SCALAR] for [x, y] in m_disp.get_bounds()]
         m_disp.fit_bounds(bounds)
         return m_disp
-
-    return (create_map,)
+    return create_map,
 
 
 @app.cell
 def __(conditions, create_map):
     m_disp = create_map(conditions)
-    return (m_disp,)
+    return m_disp,
 
 
 @app.cell
